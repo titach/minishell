@@ -12,8 +12,11 @@
 
 #include "minishell.h"
 
-void	get_shell_data(t_minishell *sh)
+void	get_shell_data(t_minishell *sh, char **en)
 {
+	int i;
+
+	// sh = (t_minishell *)malloc(sizeof(t_minishell));
 	sh->i = 0;
 	sh->j = 0;
 	sh->n = 0;
@@ -25,9 +28,18 @@ void	get_shell_data(t_minishell *sh)
 	sh->pipefd2[0] = 0;
 	sh->pipefd2[1] = 0;
 	sh->sub = NULL;
+	sh->cmd = NULL;
 	sh->eof = NULL;
 	sh->hd = NULL;
 	sh->sep = NULL;
+	sh->env = malloc(sizeof(char *) * (ft_strlen2d(en) + 1));
+	i = 0;
+	while (en[i])
+	{
+		sh->env[i] = ft_strdup(en[i]);
+		i++;
+	}
+	sh->env[i] = NULL;
 }
 
 int	find_heredoc(char *input)
@@ -103,7 +115,7 @@ int	main(int ac, char **av, char **en)
 
 	(void)ac;
 	(void)av;
-	get_shell_data(&sh);
+	get_shell_data(&sh, en);
 	signal_init(1);
 	while (1)
 	{
@@ -111,14 +123,15 @@ int	main(int ac, char **av, char **en)
 		if (input == NULL || ft_strncmp(input, "exit", 5) == 0)
 		{
 			free(input);
-			// if (input == NULL)
+			ft_free_split(sh.env);
+			// ft_free_split(sh.envp);
 			printf("exit\n");
 			break ;
 		}
 		if (input && *input)
 		{
 			add_history(input);
-			start_process(input, en, sh);
+			start_process(input, sh.env, sh);
 		}
 		free(input);
 	}

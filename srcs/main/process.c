@@ -70,18 +70,27 @@ static void	main_process(char *input, char **en, t_minishell sh, int *ss)
 	else if (pid == 0)
 	{
 		sh.exit = *ss;
-		command = select_builtins(input, sh);
-		program = ft_strjoin("/bin/", command[0]);
-		// all_error(command);
-		execve(program, command, en);
-			// error_msg(program, command);
+		command = select_builtins(input, sh, &sh.cmd);
+		// printf("%s\n", sh.cmd);
+		program = select_program(command, en);//ในนี้ ทำการแยก echo ออกมาใส่ /bin/sh/echo เอา envมาอยู่ในนี้
+		program = check_program(program, command[2], sh);
+		// printf("%s\n", program);
+		if (execve(program, command, en) == -1)
+		{
+			perror("ee");
+			free(program);//free **command ด้วย
+			exit(127);
+		}
 	}
 	else
 	{
 		waitpid(pid, &status, 0);
 		signal_init(1);
+		*ss = WEXITSTATUS(status);
+		// printf("%d\n", *ss);
 	}
-	*ss = WEXITSTATUS(status);
+	// dprintf(2, "status : %d\n", *ss);
+	// *ss = WEXITSTATUS(status);
 	// printf("%s\n", input);
 }
 
@@ -95,10 +104,10 @@ void	sep_process(char *input, char **en, t_minishell sh, int *ss)
 	}
 	else
 	{
-		// printf("[main]\n\n");
 		if (sh.n > 0)
 			sh.n = -1;
 		main_process(input, en, sh, ss);
+		unset_cmd(input, sh);
 	}
 	ft_free_split(sh.sep);
 }

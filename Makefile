@@ -5,11 +5,13 @@ LIBFT   = ./libft/libft.a
 HEADERS = minishell.h
 
 # รายการไฟล์ .c ที่ต้องคอมไพล์
-MAIN    = main.c process.c heredoc.c error_func.c utils.c system.c sub_system.c rules.c signal.c file_err.c
-BUILTINS = exit.c
+MAIN    = main.c process.c heredoc.c error_func.c utils.c system.c sub_system.c rules.c signal.c file_err.c cmd_err.c
+BUILTINS = exit.c env.c unset.c
+HANDLE = check_cmd.c
 
 SRCS = $(addsuffix , $(addprefix srcs/builtins/, $(BUILTINS))) \
 	  $(addsuffix , $(addprefix srcs/main/, $(MAIN))) \
+	  $(addsuffix , $(addprefix srcs/handle/, $(HANDLE))) \
 
 OBJS    = $(SRCS:.c=.o)
 

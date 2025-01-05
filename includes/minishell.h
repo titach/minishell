@@ -36,10 +36,13 @@ typedef struct s_minishell
 	int	pipefd[2];
 	int	pipefd2[2];
 	char *sub;
+	char	*cmd;
 	char **eof;
 	char **hd;
 	char **sep;
+	char	**env;
 }	t_minishell;
+/*---------------main---------------*/
 
 //process
 void	sep_process(char *input, char **en, t_minishell sh, int *ss);
@@ -52,7 +55,7 @@ void	subprocess_cons(t_minishell sh, char **en);
 void	build_hd(char *input, int c, char **eof, char **file);
 //error_func
 void	error_func(char *msg);
-void	msg_error(char *file, char *msg);
+void	msg_error(char *file, char *msg, int flag);
 void	all_error(char **command);
 //utils
 void	ft_free_split(char **split);
@@ -61,15 +64,32 @@ int	ft_strlen2d(char **sep);
 int	count_end(char *input, int p);
 char	*get_end(char *input, int j, int start);
 //rules
-char	**select_builtins(char *input, t_minishell sh);
+char	*check_program(char *program, char *input, t_minishell sh);
+char	*select_program(char **cmd, char **en);
+char	**select_builtins(char *input, t_minishell sh, char	**cmd);
 //signal
 void	sigint_handle(int sig);
 void	handle_sigint(int sig);
 void	handle_sigquit(int sig);
 void	signal_init(int sig);
 //file_err
+int	last_string(char end);
 int	redirect_err_file(char *input);
+//cmd_err
+char	*find_command(char *input);
+
+/*---------------builtins---------------*/
 
 //exit
 int	handle_exit(char *input);
+//env
+void	env_cmd(char *input, t_minishell sh);
+//unset
+void	unset_cmd(char *input, t_minishell sh);
+
+/*---------------handle---------------*/
+
+//check_cmd
+void    filter_cmd(char *name);
+
 #endif

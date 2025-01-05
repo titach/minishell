@@ -18,9 +18,10 @@ void	error_func(char *msg)
 	exit(1);
 }
 
-void	msg_error(char *file, char *msg)
+void	msg_error(char *file, char *msg, int flag)
 {
-	write(2, "bash: ", 6);
+	if (flag == 1)
+		write(2, "bash: ", 6);
 	write(2, file, ft_strlen(file));
 	write(2, msg, ft_strlen(msg));
 }

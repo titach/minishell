@@ -23,11 +23,11 @@ static void	receive_input(char *eof, char *file)
 	if (fd == -1)
 		error_func("can not open file.");
 	len = ft_strlen(eof);
-	if (ft_strlen(input) > len)
-		len = ft_strlen(input);
 	while (1)
 	{
 		input = readline("> ");
+		if (ft_strlen(input) > len)
+			len = ft_strlen(input);
 		if (ft_strncmp(input, eof, len) == 0)
 		{
 			free(input);

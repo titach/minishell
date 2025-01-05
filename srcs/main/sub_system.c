@@ -63,10 +63,17 @@ static void	pipe_subprocess(t_minishell sh, int flag, char **en)
 		redirect_pipe2(sh.pipefd, sh.pipefd2, flag);
 	else
 		redirect_pipe2(sh.pipefd2, sh.pipefd, flag);
-	command = select_builtins(sh.sub, sh);
-	program = ft_strjoin("/bin/", command[0]);
-	// all_error(command, en, sh);
-	execve(program, command, en);
+	command = select_builtins(sh.sub, sh, &sh.cmd);
+	// printf("%s\n", sh.cmd);
+	program = select_program(command, en);//ในนี้ ทำการแยก echo ออกมาใส่ /bin/sh/echo เอา envมาอยู่ในนี้
+	program = check_program(program, command[2], sh);
+	// printf("%s\n", program);
+	if (execve(program, command, en) == -1)
+	{
+		perror("ee");
+		free(program);//free **command ด้วย
+		exit(127);
+	}
 }
 
 static void	pipe_process(int fd[2], int flag, char **en, t_minishell sh)
@@ -75,10 +82,17 @@ static void	pipe_process(int fd[2], int flag, char **en, t_minishell sh)
 	char	*program;
 
 	redirect_pipe(fd, flag);
-	command = select_builtins(sh.sub, sh);
-	program = ft_strjoin("/bin/", command[0]);
-	// all_error(command, en, sh);
-	execve(program, command, en);
+	command = select_builtins(sh.sub, sh, &sh.cmd);
+	// printf("%s\n", sh.cmd);
+	program = select_program(command, en);//ในนี้ ทำการแยก echo ออกมาใส่ /bin/sh/echo เอา envมาอยู่ในนี้
+	program = check_program(program, command[2], sh);
+	// printf("%s\n", program);
+	if (execve(program, command, en) == -1)
+	{
+		perror("ee");
+		free(program);//free **command ด้วย
+		exit(127);
+	}
 }
 
 void	subprocess_cons(t_minishell sh, char **en)

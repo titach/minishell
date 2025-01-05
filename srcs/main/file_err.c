@@ -3,14 +3,21 @@
 /*                                                        :::      ::::::::   */
 /*   file_err.c                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: tchaloei <tchaloei@student.42bangkok.com>  +#+  +:+       +#+        */
+/*   By: tchaloei <tchaloei@student.42bangkok.co    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/29 14:53:24 by tchaloei          #+#    #+#             */
-/*   Updated: 2024/12/29 14:54:10 by tchaloei         ###   ########.fr       */
+/*   Updated: 2025/01/02 23:13:38 by tchaloei         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "minishell.h"
+
+int	last_string(char end)
+{
+	if (end == ' ' || end == '<' || end == '>')
+		return (1);
+	return (0);
+}
 
 static void	examine_file(char *input, int p, char *file, char mark)
 {
@@ -54,14 +61,14 @@ static int	prepare_filename(char *input, int p, int count)
 	examine_file(input, p, file, mark);
 	if (access(file, F_OK) == -1 && mark == '<')
 	{
-		msg_error(file, ": No such file or directory\n");
+		msg_error(file, ": No such file or directory\n", 1);
 		flag = 1;
 	}
 	else if (mark == '<' || mark == '>')
 	{
 		if (access(file, W_OK) == -1 && access(file, F_OK) == 0)
 		{
-			msg_error(file, ": Permission denied\n");
+			msg_error(file, ": Permission denied\n", 1);
 			flag = 1;
 		}
 	}

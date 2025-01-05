@@ -83,7 +83,74 @@ static void	handle_exit_ss(char *input, t_minishell sh)
 	free(old);
 }
 
-char	**select_builtins(char *input, t_minishell sh)
+static int	buitins_cmd(char *cmd)
+{
+	if (ft_strncmp(cmd, "echo", 4) == 0)
+		return (1);
+	else if (ft_strncmp(cmd, "pwd", 3) == 0)
+		return (1);
+	else if (ft_strncmp(cmd, "export", 6) == 0)
+		return (1);
+	else if (ft_strncmp(cmd, "cd", 2) == 0)
+		return (1);
+	else if (ft_strncmp(cmd, "unset", 5) == 0)
+		return (1);
+	else if (ft_strncmp(cmd, "exit", 4) == 0)
+		return (1);
+	return (0);
+}
+
+char	*check_program(char *program, char *input, t_minishell sh)
+{
+	if (program)
+	{
+		env_cmd(input, sh);
+		free(sh.cmd);
+		return (program);
+	}
+	else
+	{
+		if (buitins_cmd(sh.cmd) == 1)
+		{
+			free(sh.cmd);
+			return ("/bin/sh");
+		}
+		free(sh.cmd);
+		return (NULL);
+	}
+}
+
+char	*select_program(char **command, char **en)
+{
+	char **path;
+	char	*program;
+	char	*tmp;
+	int	i;
+
+	while (*en && ft_strncmp(*en, "PATH=", 5) != 0)
+		en++;
+	if (!*en)
+		return (NULL);
+	path = ft_split(*en + 5, ':');
+	i = 0;
+	while (path[i])
+	{
+		tmp = ft_strjoin(path[i], "/");
+		program = ft_strjoin(tmp, command[0]);
+		free(tmp);
+		if (access(program, X_OK) == 0)
+		{
+			ft_free_split(path);
+			return (program);
+		}
+		free(program);
+		i++;
+	}
+	ft_free_split(path);
+	return (NULL);
+}
+
+char	**select_builtins(char *input, t_minishell sh, char **cmd)
 {
 	char	**command;
 
@@ -95,13 +162,7 @@ char	**select_builtins(char *input, t_minishell sh)
 			input = ft_strdup("cp 2> /dev/null");
 		}
 	}
-	// (void)sh;
-	// if (sh.n < 0) //ถ้าอยู่ใน "' ไม่ต้องนับ
-	// {
-	// 	free(input);
-	// 	input = ft_strdup("ls a 2> /dev/null");
-	// 	write(2, "bash: syntax error near unexpected token `|'\n", 45);
-	// }
+	*cmd = find_command(input);
 	if (ft_strnstr(input, "echo", ft_strlen(input)))
 		handle_exit_ss(input, sh);
 	command = (char **)malloc(sizeof(char *) * 4);
