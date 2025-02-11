@@ -5,12 +5,48 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: tchaloei <tchaloei@student.42bangkok.co    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2024/12/19 22:15:49 by tchaloei          #+#    #+#             */
-/*   Updated: 2024/12/19 22:15:49 by tchaloei         ###   ########.fr       */
+/*   Created: 2025/01/14 00:05:42 by tchaloei          #+#    #+#             */
+/*   Updated: 2025/01/14 00:05:42 by tchaloei         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "minishell.h"
+
+int	ft_strlen2d(char **sep)
+{
+	int	i;
+
+	i = 0;
+	while (sep[i])
+		i++;
+	return (i);
+}
+
+long long	ft_atoll(const char *str)
+{
+	long long	result;
+	long long	sign;
+	int			i;
+
+	result = 0;
+	sign = 1;
+	i = 0;
+	while (str[i] == 32 || (str[i] >= 9 && str[i] <= 13))
+		i++;
+	if (str[i] == '+' && str[i + 1] != '-')
+		i++;
+	if (str[i] == '-')
+	{
+		sign = -1;
+		i++;
+	}
+	while (str[i] && str[i] >= 48 && str[i] <= 57)
+	{
+		result = result * 10 + str[i] - 48;
+		i++;
+	}
+	return (result *= sign);
+}
 
 void	ft_free_split(char **split)
 {
@@ -25,58 +61,28 @@ void	ft_free_split(char **split)
 	free(split);
 }
 
-int	count_imp(char *input, char c)
+void	ft_free_struct(t_phaser *sh)
 {
-	int	i;
-	int	j;
+	t_cmd	*cmd;
+	t_file	*file;
 
-	i = 0;
-	j = 0;
-	while (input[i])
+	while (sh->start)
 	{
-		if (input[i] == c)
-			j++;
-		i++;
+		cmd = sh->start;
+		while (cmd->file)
+		{
+			file = cmd->file;
+			if (file->re == 4)
+				unlink(file->name);
+			cmd->file = cmd->file->next;
+			free(file->name);
+			free(file);
+		}
+		if (cmd->program)
+			free(cmd->program);
+		ft_free_split(cmd->command);
+		sh->start = sh->start->pipe;
+		free(cmd);
 	}
-	return (j);
-}
-
-int	ft_strlen2d(char **sep)
-{
-	int	i;
-
-	i = 0;
-	while (sep[i])
-		i++;
-	return (i);
-}
-
-int	count_end(char *input, int p)
-{
-	int	count;
-
-	count = 0;
-	while (input[p] == ' '&& input[p])
-		p++;
-	while (input[p] != ' ' && input[p] != '|' && input[p] != ';' && input[p])
-	{
-		p++;
-		count++;
-	}
-	return (count);
-}
-
-char	*get_end(char *input, int j, int start)
-{
-	char	*end;
-	int		c;
-
-	while (input[start] == ' ' && input[start])
-		start++;
-	end = malloc(sizeof(char) * (j + 1));
-	c = 0;
-	while (c < j)
-		end[c++] = input[start++];
-	end[c] = '\0';
-	return (end);
+	ft_free_split(sh->sep);
 }

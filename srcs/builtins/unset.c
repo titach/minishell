@@ -5,61 +5,62 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: tchaloei <tchaloei@student.42bangkok.co    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2024/12/31 02:00:54 by tchaloei          #+#    #+#             */
-/*   Updated: 2024/12/31 02:00:54 by tchaloei         ###   ########.fr       */
+/*   Created: 2025/01/19 18:26:40 by djewapat          #+#    #+#             */
+/*   Updated: 2025/01/28 22:34:38 by tchaloei         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "minishell.h"
 
-void	unset_cmd(char *input, t_minishell sh)
+void	unset_env(char *un, t_phaser *sh)
 {
-	char	**cmd;
-	int	i;
+	char	**temp;
+	int		i;
+	int		j;
 
-	cmd = ft_split(input, ' ');
-	if (ft_strncmp(cmd[0], "unset", ft_strlen(cmd[0])) == 0)
+	i = 0;
+	j = 0;
+	temp = (char **)malloc(sizeof(char *) * (ft_strlen2d(sh->env)));
+	if (!temp)
+		return ;
+	while (sh->env[i])
 	{
-		i = 0;
-		while (sh.env[i])
+		if (c_cmp(sh->env[i], un, 3) == 0)
+			i++;
+		else
 		{
-			if (ft_strncmp(sh.env[i], cmd[1], ft_strlen(cmd[1])) == 0)
-				break;
+			temp[j] = ft_strdup(sh->env[i]);
+			j++;
 			i++;
 		}
-		if (!ft_strnstr(cmd[1], "=", ft_strlen(cmd[1])))
-		{
-			while (sh.env[i])
-			{
-				sh.env[i] = sh.env[i + 1];
-				i++;
-			}
-		}
-		ft_free_split(cmd);
-	}	
+	}
+	temp[j] = NULL;
+	ft_free_split(sh->env);
+	sh->env = temp;
 }
 
-// void	unset_cmd(char *input, t_minishell sh)
-// {
-// 	int		i;
-// 	char	**set;
+void	unset_cmd(t_phaser *sh, t_cmd *div)
+{
+	int	i;
+	int	j;
 
-// 	set = ft_split(input, ' ');
-// 	i = 0;
-// 	while (sh.env[i])
-// 	{
-// 		if (ft_strncmp(set[1], sh.env[i], ft_strlen(set[1])) == 0)
-// 			break;
-// 		i++;
-// 	}
-// 	if (!ft_strnstr(set[1], "=", ft_strlen(set[1])))
-// 	{
-// 		// sh.env[i] = ft_strjoin(set[1], "=")
-// 		while (sh.env[i])
-// 		{
-// 			sh.env[i] = sh.env[i + 1];
-// 			i++;
-// 		}
-// 	}
-// 	ft_free_split(set);
-// }
+	if (!div->command[1])
+		return ;
+	i = 1;
+	while (div->command[i])
+	{
+		j = 0;
+		if (c_cmp(div->command[i], "PWD", 3) == 0)
+			sh->flag = 1;
+		while (sh->env[j])
+		{
+			if (c_cmp(sh->env[j], div->command[i], 3) == 0)
+			{
+				unset_env(div->command[i], sh);
+				break ;
+			}
+			j++;
+		}
+		i++;
+	}
+}

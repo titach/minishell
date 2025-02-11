@@ -5,109 +5,131 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: tchaloei <tchaloei@student.42bangkok.co    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2024/12/18 19:13:25 by tchaloei          #+#    #+#             */
-/*   Updated: 2024/12/18 19:13:25 by tchaloei         ###   ########.fr       */
+/*   Created: 2025/01/17 19:10:39 by tchaloei          #+#    #+#             */
+/*   Updated: 2025/01/17 19:10:39 by tchaloei         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "minishell.h"
 
-static void	redirect_file(char *hd, char *eof)
+static	void	create_pipe(t_phaser *sh, int j)
 {
-	int		rd;
-	int		fd;
-	int		b;
-	char	buf[10];
-
-	rd = open(hd, O_RDONLY);
-	fd = open(eof, O_CREAT | O_RDWR | O_TRUNC, 0644);
-	b = 1;
-	while (b > 0)
+	if (j % 2 == 0)
 	{
-		b = read(rd, buf, sizeof(buf));
-		write(fd, buf, b);
-	}
-	close(rd);
-	close(fd);
-}
-
-void	edit_input(char *input, t_minishell sh, int round)
-{
-	int			i;
-	static int	j = 0;
-
-	if (sh.h_ok < 0)
-		return ;
-	i = 0;
-	if (round == 0)
-		j = 0;
-	while (input[i])
-	{
-		if (input[i] == '<' && input[i + 1] == '<')
+		if (pipe(sh->pipefd) == -1)
 		{
-			input[++i] = ' ';
-			redirect_file(sh.hd[j], sh.eof[j]);
-			j++;
-			sh.id_h = j;
+			perror("pipe");
+			exit(1);
 		}
-		i++;
+	}
+	else
+	{
+		if (pipe(sh->pipefd2) == -1)
+		{
+			perror("pipe");
+			exit(1);
+		}
 	}
 }
 
-static void	main_process(char *input, char **en, t_minishell sh, int *ss)
+static void	close_pipe(t_phaser *sh, int i, int pipefd[2], int pipefd2[2])
 {
-	pid_t	pid;
-	int		status;
-	char	**command;
-	char	*program;
+	if (sh->pipe > 1)
+	{
+		if (i % 2 != 0 && i > 0)
+		{
+			close(pipefd[0]);
+			close(pipefd[1]);
+		}
+		else if (i % 2 == 0 && i > 0)
+		{
+			close(pipefd2[0]);
+			close(pipefd2[1]);
+		}
+	}
+}
 
-	edit_input(input, sh, sh.id_h);
-	status = 0;
-	pid = fork();
+static void	redirect_pipe(int fd[2], int flag)
+{
+	if (flag == 0)
+	{
+		if (dup2(fd[1], STDOUT_FILENO) == -1)
+		{
+			perror("dup2");
+			close(fd[1]);
+			close(fd[0]);
+			exit(EXIT_FAILURE);
+		}
+		close(fd[1]);
+		close(fd[0]);
+	}
+	else
+	{
+		if (dup2(fd[0], STDIN_FILENO) == -1)
+		{
+			perror("dup2");
+			close(fd[1]);
+			close(fd[0]);
+			exit(EXIT_FAILURE);
+		}
+		close(fd[0]);
+		close(fd[1]);
+	}
+}
+
+static void	subprocess_cons(t_phaser *sh, t_cmd *div, int i)
+{
+	if (sh->pipe > 1)
+	{
+		if (i == 0)
+			redirect_pipe(sh->pipefd, 0);
+		else if (i % 2 != 0 && i > 0 && i < sh->pipe - 1)
+		{
+			redirect_pipe(sh->pipefd, 1);
+			redirect_pipe(sh->pipefd2, 0);
+		}
+		else if (i % 2 == 0 && i > 0 && i < sh->pipe - 1)
+		{
+			redirect_pipe(sh->pipefd, 0);
+			redirect_pipe(sh->pipefd2, 1);
+		}
+		else if (i == sh->pipe - 1 && i % 2 != 0)
+			redirect_pipe(sh->pipefd, 1);
+		else if (i == sh->pipe - 1 && i % 2 == 0)
+			redirect_pipe(sh->pipefd2, 1);
+	}
+	if (div->file)
+		redirection_file(sh, div, 0);
+	do_builtins(sh, div);
+	if (execve(div->program, div->command, sh->env) == -1)
+		handle_all(sh, div, 0);
+}
+
+void	start_process(t_phaser *sh, t_cmd *div, int i, int j)
+{
+	sh->pids = malloc(sizeof(pid_t) * sh->pipe);
+	if (!sh->pids)
+		error_func("malloc error");
 	signal_init(2);
-	if (pid < 0)
-		error_func("fork error");
-	else if (pid == 0)
+	while (div)
 	{
-		sh.exit = *ss;
-		command = select_builtins(input, sh, &sh.cmd);
-		// printf("%s\n", sh.cmd);
-		program = select_program(command, en);//ในนี้ ทำการแยก echo ออกมาใส่ /bin/sh/echo เอา envมาอยู่ในนี้
-		program = check_program(program, command[2], sh);
-		// printf("%s\n", program);
-		if (execve(program, command, en) == -1)
-		{
-			perror("ee");
-			free(program);//free **command ด้วย
-			exit(127);
-		}
+		if (j < sh->pipe - 1 && sh->pipe > 1)
+			create_pipe(sh, j);
+		sh->pids[i] = fork();
+		if (sh->pids[i] < 0)
+			error_func("fork");
+		else if (sh->pids[i] == 0)
+			subprocess_cons(sh, div, i);
+		close_pipe(sh, i++, sh->pipefd, sh->pipefd2);
+		j++;
+		div = div->pipe;
 	}
+	j = 0;
+	while (j < i)
+		waitpid(sh->pids[j++], &sh->status, 0);
+	if (g_ss > 0)
+		sh->exit = g_ss;
 	else
-	{
-		waitpid(pid, &status, 0);
-		signal_init(1);
-		*ss = WEXITSTATUS(status);
-		// printf("%d\n", *ss);
-	}
-	// dprintf(2, "status : %d\n", *ss);
-	// *ss = WEXITSTATUS(status);
-	// printf("%s\n", input);
-}
-
-void	sep_process(char *input, char **en, t_minishell sh, int *ss)
-{
-	sh.n = count_imp(input, '|');
-	sh.sep = ft_split(input, '|');
-	if (sh.n + 1 == ft_strlen2d(sh.sep) && sh.n > 0)
-	{
-		child_subprocess(sh, en, ss);
-	}
-	else
-	{
-		if (sh.n > 0)
-			sh.n = -1;
-		main_process(input, en, sh, ss);
-		unset_cmd(input, sh);
-	}
-	ft_free_split(sh.sep);
+		sh->exit = handle_all_status(sh, div, 0);
+	free(sh->pids);
 }

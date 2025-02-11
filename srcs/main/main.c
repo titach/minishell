@@ -5,134 +5,117 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: tchaloei <tchaloei@student.42bangkok.co    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2024/12/18 16:19:11 by tchaloei          #+#    #+#             */
-/*   Updated: 2024/12/18 16:19:11 by tchaloei         ###   ########.fr       */
+/*   Created: 2025/01/11 00:19:07 by tchaloei          #+#    #+#             */
+/*   Updated: 2025/01/11 00:19:07 by tchaloei         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "minishell.h"
 
-void	get_shell_data(t_minishell *sh, char **en)
-{
-	int i;
+int	g_ss;
 
-	// sh = (t_minishell *)malloc(sizeof(t_minishell));
-	sh->i = 0;
-	sh->j = 0;
-	sh->n = 0;
-	sh->id_h = 0;
-	sh->h_ok = -1;
-	sh->exit = 0;
-	sh->pipefd[0] = 0;
-	sh->pipefd[1] = 0;
-	sh->pipefd2[0] = 0;
-	sh->pipefd2[1] = 0;
-	sh->sub = NULL;
-	sh->cmd = NULL;
-	sh->eof = NULL;
-	sh->hd = NULL;
-	sh->sep = NULL;
-	sh->env = malloc(sizeof(char *) * (ft_strlen2d(en) + 1));
-	i = 0;
-	while (en[i])
-	{
-		sh->env[i] = ft_strdup(en[i]);
-		i++;
-	}
-	sh->env[i] = NULL;
+int	builtins_con(t_phaser *sh)
+{
+	int	shell_exit;
+
+	shell_exit = 1;
+	if (select_builtins(sh->start) == 20 && !sh->start->pipe)
+		export_cmd(sh, sh->start, 0, 0);
+	else if (select_builtins(sh->start) == 30 && !sh->start->pipe)
+		cd_cmd(sh, sh->start, 0);
+	else if (select_builtins(sh->start) == 40 && !sh->start->pipe)
+		unset_cmd(sh, sh->start);
+	else if (select_builtins(sh->start) == 50 && !sh->start->pipe)
+		shell_exit = close_shell(sh->start, 0, 0);
+	return (shell_exit);
 }
 
-int	find_heredoc(char *input)
+int	loading_process(char *input, t_phaser *sh)
 {
-	int	i;
-	int	j;
-	char	c;
+	int	shell_exit;
 
-	i = 0;
-	j = 0;
-	while (input[i])
-	{
-		if (input[i] == '"' || input[i] == '\'')
-		{
-			c = input[i];
-			i++;
-			while (input[i] != c)
-				i++;
-		}
-		else if (input[i] == '<' && input[i + 1] == '<')
-			j++;
-		i++;
-	}
-	return (j);
+	shell_exit = 1;
+	sh->input = input;
+	start_phaser(input, sh, 0);
+	start_process(sh, sh->start, 0, 0);
+	signal_init(1);
+	if (!sh->start->pipe && sh->start->command[0])
+		shell_exit = builtins_con(sh);
+	ft_free_struct(sh);
+	if (shell_exit == 0)
+		free(input);
+	return (shell_exit);
 }
 
-void	start_hd(char *input, int c, t_minishell *sh)
+void	prompt_line(t_phaser *sh)
 {
-	sh->h_ok = 1;
-	sh->eof = malloc(sizeof(char *) * (c + 1));
-	if (!sh->eof)
-		error_func("The memmory can't allocate");
-	sh->hd = malloc(sizeof(char *) * (c + 1));
-	if (!sh->hd)
-		error_func("The memmory can't allocate");
-	build_hd(input, c, sh->eof, sh->hd);
-}
+	char	*input;
 
-void	start_process(char *input, char **en, t_minishell sh)
-{
-	int			i;
-	DIR			*dir;
-	static int	ss = 0;
-
-	i = find_heredoc(input);
-	dir = NULL;
-	if (i > 0)
-	{
-		start_hd(input, i, &sh);
-		dir = opendir("/tmp/");
-	}
-	sep_process(input, en, sh, &ss);
-	if (sh.eof)// เอา if ออกแล้วลองดูว่าจะเอาunlinkไว้ใน loop มั้ย
-	{
-		i = 0;
-		while (sh.eof[i])
-		{
-			unlink(sh.eof[i]);
-			unlink(sh.hd[i]);
-			i++;
-		}
-		ft_free_split(sh.eof);
-		ft_free_split(sh.hd);
-	}
-	if (dir)
-		closedir(dir);
-}
-
-int	main(int ac, char **av, char **en)
-{
-	char		*input;
-	t_minishell	sh;
-
-	(void)ac;
-	(void)av;
-	get_shell_data(&sh, en);
 	signal_init(1);
 	while (1)
 	{
 		input = readline("\1\e[1;36m\2minishell > \1\e[0m\2");
-		if (input == NULL || ft_strncmp(input, "exit", 5) == 0)
+		if (input == NULL)
 		{
-			free(input);
-			ft_free_split(sh.env);
-			// ft_free_split(sh.envp);
 			printf("exit\n");
 			break ;
 		}
+		if (g_ss > 0)
+			sh->exit = g_ss;
 		if (input && *input)
 		{
 			add_history(input);
-			start_process(input, sh.env, sh);
+			if (check_syntax(input, sh, -1) == 0)
+			{
+				if (loading_process(input, sh) == 0)
+					break ;
+			}
 		}
 		free(input);
 	}
+}
+
+void	get_shell_data(t_phaser *sh, char **en, int e)
+{
+	sh->start = NULL;
+	sh->pids = NULL;
+	sh->sep = NULL;
+	sh->input = NULL;
+	sh->tmp = NULL;
+	sh->start = 0;
+	sh->stop = 0;
+	sh->pipe = 0;
+	sh->exit = 0;
+	sh->hd = 0;
+	sh->pipefd[0] = 0;
+	sh->pipefd[1] = 0;
+	sh->pipefd2[0] = 0;
+	sh->pipefd2[1] = 0;
+	sh->flag = 0;
+	sh->env = (char **)malloc(sizeof(char *) * (ft_strlen2d(en) + 1));
+	if (!sh->env)
+		exit(1);
+	while (en[++e])
+		sh->env[e] = ft_strdup(en[e]);
+	sh->env[e] = NULL;
+}
+
+int	main(int ac, char **av, char **en)
+{
+	t_phaser	*sh;
+	int			status;
+
+	(void)ac;
+	(void)av;
+	status = 0;
+	sh = (t_phaser *)malloc(sizeof(t_phaser));
+	if (!sh)
+		exit(1);
+	get_shell_data(sh, en, -1);
+	prompt_line(sh);
+	clear_history();
+	status = sh->exit;
+	ft_free_split(sh->env);
+	free(sh);
+	return (status);
 }
